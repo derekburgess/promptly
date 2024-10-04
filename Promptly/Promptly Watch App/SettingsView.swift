@@ -12,36 +12,43 @@ struct SettingsView: View {
     @FocusState private var isTextFieldFocused: Bool
 
     var body: some View {
-        VStack {
-            Text("Tip: Use the companion iOS app to paste your API key.")
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
-                        .fill(Color.white.opacity(0.2))
-                )
-                .padding([.leading, .trailing])
-                .padding(.bottom, 10)
-                .padding(.top, 10)
-                .font(.system(size: 12))
-                .lineLimit(nil)
-                .fixedSize(horizontal: false, vertical: true)
-            
-            TextField("API Key", text: $apiKey)
-                .padding([.leading, .trailing])
-                .focused($isTextFieldFocused)
-                .onChange(of: apiKey) {
+        ScrollView {
+            VStack {
+                Text("Tip: Use the companion iOS app to paste your API key.")
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(
+                        RoundedRectangle(cornerRadius: 10)
+                            .fill(Color.white.opacity(0.2))
+                    )
+                    .padding([.leading, .trailing])
+                    .padding(.top, 10)
+                    .padding(.bottom, 5)
+                    .font(.system(size: 12))
+                    .lineLimit(nil)
+                    .fixedSize(horizontal: false, vertical: true)
+                
+                TextField("OpenAI API Key", text: $apiKey)
+                    .padding([.leading, .trailing])
+                    .focused($isTextFieldFocused)
+                    .onChange(of: apiKey) {
+                        saveSettings()
+                        sendSettingsToPhone()
+                    }
+                    .accessibilityLabel("Enter OpenAI API Key")
+
+                Toggle(isOn: $useGPT4o) {
+                    Text("GPT-4o")
+                }
+                .padding(.vertical, 10)
+                .padding(.horizontal, 20)
+                .onChange(of: useGPT4o) {
                     saveSettings()
                     sendSettingsToPhone()
                 }
-
-            Toggle(isOn: $useGPT4o) {
-                Text("GPT-4o")
+                .accessibilityLabel("Toggle GPT-4o")
             }
-            .padding()
-            .onChange(of: useGPT4o) {
-                saveSettings()
-                sendSettingsToPhone()
-            }
+            .frame(maxWidth: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(red: 34/255, green: 0/255, blue: 68/255))
@@ -69,11 +76,16 @@ struct SettingsView: View {
 
     func sendSettingsToPhone() {
         guard !apiKey.isEmpty else { return }
+
+        let message = ["apiKey": apiKey, "useGPT4o": useGPT4o] as [String : Any]
+
         if WCSession.default.isReachable {
-            let message = ["apiKey": apiKey, "useGPT4o": useGPT4o] as [String : Any]
             WCSession.default.sendMessage(message, replyHandler: nil, errorHandler: { error in
                 print("Error sending settings to phone: \(error.localizedDescription)")
+                WCSession.default.transferUserInfo(message)
             })
+        } else {
+            WCSession.default.transferUserInfo(message)
         }
     }
 
